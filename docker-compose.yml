@@ -1,0 +1,54 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py wait_for_db &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=app
+      - DB_USER=postgres
+      - DB_PASSWORD=secretpassword
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secretpassword
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  selenium:
+    image: selenium/standalone-chrome
+    ports:
+      - "4444:4444"
+
+  django-q:
+    image: parsing:latest
+    command: python manage.py qcluster
+    depends_on:
+      - app
+      - db
+      - redis
+      - selenium
+    environment:
+      - DB_HOST=db
+      - DB_NAME=app
+      - DB_USER=postgres
+      - DB_PASSWORD=secretpassword
